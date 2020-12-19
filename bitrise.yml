@@ -1,0 +1,271 @@
+---
+format_version: '8'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: android
+trigger_map:
+- push_branch: feature/*
+  workflow: onPushFeature
+- push_branch: master
+  workflow: tagging
+- pull_request_source_branch: release/*
+  pull_request_target_branch: master
+  workflow: onPRMaster
+- pull_request_source_branch: develop
+  pull_request_target_branch: release/*
+  workflow: onPRCandidate
+- pull_request_target_branch: develop
+  workflow: onPRDevelop
+workflows:
+  deploy:
+    description: |
+      ## How to get a signed APK
+
+      This workflow contains the **Sign APK** step. To sign your APK all you have to do is to:
+
+      1. Click on **Code Signing** tab
+      1. Find the **ANDROID KEYSTORE FILE** section
+      1. Click or drop your file on the upload file field
+      1. Fill the displayed 3 input fields:
+       1. **Keystore password**
+       1. **Keystore alias**
+       1. **Private key password**
+      1. Click on **[Save metadata]** button
+
+      That's it! From now on, **Sign APK** step will receive your uploaded files.
+
+      ## To run this workflow
+
+      If you want to run this workflow manually:
+
+      1. Open the app's build list page
+      2. Click on **[Start/Schedule a Build]** button
+      3. Select **deploy** in **Workflow** dropdown input
+      4. Click **[Start Build]** button
+
+      Or if you need this workflow to be started by a GIT event:
+
+      1. Click on **Triggers** tab
+      2. Setup your desired event (push/tag/pull) and select **deploy** workflow
+      3. Click on **[Done]** and then **[Save]** buttons
+
+      The next change in your repository that matches any of your trigger map event will start **deploy** workflow.
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - script@1:
+        title: Do anything with Script step
+    - install-missing-android-tools@2:
+        inputs:
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - change-android-versioncode-and-versionname@1:
+        inputs:
+        - build_gradle_path: "$PROJECT_LOCATION/$MODULE/build.gradle"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-build@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - sign-apk@1:
+        run_if: '{{getenv "BITRISEIO_ANDROID_KEYSTORE_URL" | ne ""}}'
+    - deploy-to-bitrise-io@1: {}
+    - cache-push@2: {}
+  primary:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - install-missing-android-tools@2.3:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            yes |sdkmanager --install "build-tools;28.0.3"
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-detekt@0: {}
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - deploy-to-bitrise-io@1: {}
+    - cache-push@2: {}
+  onPRDevelop:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - install-missing-android-tools@2.3:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            yes |sdkmanager --install "build-tools;28.0.3"
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-detekt@0: {}
+    - deploy-to-bitrise-io@1: {}
+    - cache-push@2: {}
+  onPushFeature:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - install-missing-android-tools@2.3:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            yes |sdkmanager --install "build-tools;28.0.3"
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-detekt@0: {}
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - cache-push@2: {}
+  onPRCandidate:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - install-missing-android-tools@2.3:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            yes |sdkmanager --install "build-tools;28.0.3"
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-detekt@0: {}
+    - android-build@0:
+        inputs:
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - cache-push@2: {}
+  onPRMaster:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - cache-pull@2: {}
+    - install-missing-android-tools@2.3:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            yes |sdkmanager --install "build-tools;28.0.3"
+        - gradlew_path: "$PROJECT_LOCATION/gradlew"
+    - android-lint@0:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - android-detekt@0: {}
+    - android-unit-test@1:
+        inputs:
+        - project_location: "$PROJECT_LOCATION"
+        - module: "$MODULE"
+        - variant: "$VARIANT"
+    - change-android-versioncode-and-versionname@1:
+        inputs:
+        - build_gradle_path: "$BITRISE_SOURCE_DIR/app/build.gradle.kts"
+    - android-build@0:
+        inputs:
+        - variant: "$VARIANT_RELEASE"
+        - module: "$MODULE"
+    - firebase-app-distribution@0:
+        inputs:
+        - app_path: "$BITRISE_APK_PATH"
+        - app: 1:101510747727:android:9fa6b18efcc1b378e83c3a
+        - firebase_token: "$FIREBASE_TOKEN"
+    - cache-push@2: {}
+  tagging:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@4: {}
+    - script@1:
+        inputs:
+        - is_debug: 'yes'
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails
+            set -e
+            # debug log
+            set -x
+
+            BUILD_GRADLE="app/build.gradle.kts"
+            sed -i "5s/true/false/" "${BUILD_GRADLE}"
+
+            FILE_VERSION_NAME=$(sed -n '/^.*versionName\s/p' app/build.gradle.kts | awk  '{print $2}')
+            FILE_VERSION_NAME=${FILE_VERSION_NAME:1:-1}
+            FILE_VERSION_CODE=$(sed -n '/^.*versionCode\s/p' app/build.gradle.kts | awk  '{print $2}')
+            echo $FILE_VERSION_NAME
+            echo $FILE_VERSION_CODE
+
+            set -ex
+            envman add --key VERSION_NAME --value "$FILE_VERSION_NAME"
+            envman add --key VERSION_CODE --value "$FILE_VERSION_CODE"
+    - git-tag@1:
+        inputs:
+        - tag: "$VERSION_NAME-$VERSION_CODE"
+app:
+  envs:
+  - opts:
+      is_expand: false
+    PROJECT_LOCATION: "."
+  - opts:
+      is_expand: false
+    MODULE: app
+  - opts:
+      is_expand: false
+    VARIANT: debug
+  - opts:
+      is_expand: false
+    VARIANT_RELEASE: release
+  - opts:
+      is_expand: false
+    VERSION_NAME: ''
+  - opts:
+      is_expand: false
+    VERSION_CODE: ''
